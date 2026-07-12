@@ -26,8 +26,20 @@ class TicketRequest(BaseModel):
     text: str
 
 
+class GptClassification(BaseModel):
+    """What GPT is allowed to return: the 3 fields that need judgment.
+    `assigned_team` is NOT here — it's derived from category in our code.
+    This is also the strict schema the OpenAI API is forced to match.
+    """
+    category: Category
+    priority: Priority
+    reasoning: str
+
+
 class RouteResult(BaseModel):
-    """What we send back after classifying + applying business rules."""
+    """What we send back after classifying + applying business rules.
+    Built from GptClassification + the derived team + final priority.
+    """
     category: Category
     priority: Priority
     assigned_team: Team
