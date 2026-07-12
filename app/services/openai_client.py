@@ -9,7 +9,10 @@ from app.services.prompt import SYSTEM_PROMPT
 from app.schemas.ticket import GptClassification
 
 # One client, created once, reused for every call. Reads the key from config.
-client = OpenAI(api_key=settings.openai_api_key)
+# timeout: don't let a slow/hung call freeze the app.
+# max_retries=0: WE own the retry logic in router_service, so disable the
+# SDK's built-in retries to avoid them stacking (3 of ours x 2 of theirs).
+client = OpenAI(api_key=settings.openai_api_key, timeout=20.0, max_retries=0)
 
 
 def classify_ticket(text: str) -> GptClassification:
