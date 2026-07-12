@@ -8,7 +8,7 @@ data doesn't match, FastAPI rejects it with a 422 before our code runs.
 """
 
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Optional
 
 # --- Allowed values, expressed as TYPES ------------------------------------
 # Literal means "the value must be exactly one of these strings, nothing else."
@@ -44,3 +44,6 @@ class RouteResult(BaseModel):
     priority: Priority
     assigned_team: Team
     reasoning: str
+    # Set by the endpoint (metadata, not part of the routing decision).
+    # Optional so the business-rules layer doesn't have to know about timing.
+    processing_time_ms: Optional[float] = None

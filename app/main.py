@@ -7,6 +7,8 @@ ticket-routing router here.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routers import tickets
+
 app = FastAPI(title="Ticket Router")
 
 # CORS = which browser origins may call this API. The Next.js dev server runs
@@ -25,3 +27,7 @@ app.add_middleware(
 def health():
     """Liveness check: proves the server process is up. Touches nothing else."""
     return {"status": "ok"}
+
+
+# Register the ticket-routing endpoints (POST /api/route-ticket).
+app.include_router(tickets.router)
