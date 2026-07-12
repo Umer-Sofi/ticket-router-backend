@@ -17,3 +17,14 @@ CATEGORY_TO_TEAM: dict[str, str] = {
 # Derived lists — so schemas/prompt can reuse them without re-typing the values.
 CATEGORIES = list(CATEGORY_TO_TEAM.keys())
 TEAMS = list(CATEGORY_TO_TEAM.values())
+
+# Deterministic priority policy (Phase 1 business rules), keyed by category.
+# These OVERRIDE whatever priority GPT suggested. "Technical" is intentionally
+# omitted: it has no hard rule, so we defer to GPT's suggested priority.
+PRIORITY_OVERRIDES: dict[str, str] = {
+    "Billing": "High",           # payment failures, charges
+    "Security": "High",          # compromised accounts, breaches
+    "Account": "High",           # lockouts, can't log in
+    "Feature Request": "Low",    # nice-to-haves
+    "General": "Low",            # how-to questions
+}
