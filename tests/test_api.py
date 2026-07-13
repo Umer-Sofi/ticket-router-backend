@@ -5,12 +5,17 @@ so they're free. The happy-path and fallback tests MOCK the OpenAI call so
 they're deterministic and cost nothing.
 """
 
+from types import SimpleNamespace
+
 import app.services.router_service as router_service
 from app.main import app
 from app.schemas.ticket import GptClassification
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
+
+# Fake token-usage object, mimics what the OpenAI SDK returns.
+_FAKE_USAGE = SimpleNamespace(prompt_tokens=50, completion_tokens=30, total_tokens=80)
 
 
 def test_health():
@@ -40,7 +45,8 @@ def test_oversized_text_rejected():
 def test_route_ticket_applies_business_rules(monkeypatch):
     # Pretend GPT said Billing/Low. Business rule must force priority to High.
     def fake_classify(text):
-        return GptClassification(category="Billing", priority="Low", reasoning="mock")
+        gpt = GptClassification(category="Billing", priority="Low", reasoning="mock")
+        return gpt, _FAKE_USAGE
 
     monkeypatch.setattr(router_service, "classify_ticket", fake_classify)
 
@@ -51,6 +57,8 @@ def test_route_ticket_applies_business_rules(monkeypatch):
     assert body["priority"] == "High"            # overridden by business rule
     assert body["assigned_team"] == "Billing"    # derived from category
     assert body["processing_time_ms"] is not None
+    assert body["total_tokens"] == 80            # metadata attached
+    assert body["retries"] == 0
 
 
 # --- Failure path: mock OpenAI to always fail -> fallback, never crash ----

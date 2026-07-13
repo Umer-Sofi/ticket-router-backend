@@ -57,6 +57,12 @@ class RouteResult(BaseModel):
     priority: Priority
     assigned_team: Team
     reasoning: str
-    # Set by the endpoint (metadata, not part of the routing decision).
-    # Optional so the business-rules layer doesn't have to know about timing.
+    # --- Metadata (not part of the routing decision) ---
+    # All optional so the business-rules layer / fallback don't need to set them.
     processing_time_ms: Optional[float] = None
+    model: Optional[str] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    cost_usd: Optional[float] = None
+    retries: Optional[int] = None
