@@ -7,8 +7,12 @@ Pydantic validates data against these models automatically. If incoming
 data doesn't match, FastAPI rejects it with a 422 before our code runs.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import Literal, Optional
+
+# Cap ticket length: protects against huge pastes (token cost + latency).
+# The frontend textarea should use the same limit (kept in sync by hand).
+MAX_TICKET_CHARS = 5000
 
 # --- Allowed values, expressed as TYPES ------------------------------------
 # Literal means "the value must be exactly one of these strings, nothing else."
@@ -23,7 +27,16 @@ Team = Literal["Billing", "Security", "Account Management", "Engineering", "Prod
 
 class TicketRequest(BaseModel):
     """What the support operator sends us: the raw ticket text."""
-    text: str
+    # min_length rejects "", max_length rejects huge pastes — both -> 422.
+    text: str = Field(..., min_length=1, max_length=MAX_TICKET_CHARS)
+
+    @field_validator("text")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        # min_length=1 lets "   " (whitespace) through; this rejects it.
+        if not v.strip():
+            raise ValueError("Ticket text cannot be empty or whitespace.")
+        return v
 
 
 class GptClassification(BaseModel):
