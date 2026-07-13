@@ -41,7 +41,9 @@ def main():
         r = route_ticket(text)
         ok = r.category == expected
         passed += ok
-        print(f"{i:>2}  {expected:16} {r.category:16} {r.priority:8} {r.assigned_team:18} {'✅' if ok else '❌'}")
+        print(
+            f"{i:>2}  {expected:16} {r.category:16} {r.priority:8} {r.assigned_team:18} {'✅' if ok else '❌'}"
+        )
     print("-" * 78)
     print(f"Category accuracy: {passed}/{len(SAMPLES)} = {passed / len(SAMPLES) * 100:.0f}%")
 

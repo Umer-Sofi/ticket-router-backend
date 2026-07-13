@@ -3,10 +3,11 @@ GptClassification back (plus token usage). No business rules, no HTTP.
 """
 
 from openai import OpenAI
+from openai.types import CompletionUsage
 
 from app.core.config import settings
-from app.services.prompt import SYSTEM_PROMPT
 from app.schemas.ticket import GptClassification
+from app.services.prompt import SYSTEM_PROMPT
 
 # One client, created once, reused for every call. Reads the key from config.
 # timeout: don't let a slow/hung call freeze the app.
@@ -19,14 +20,14 @@ _PRICE_PER_1M_INPUT = 0.15
 _PRICE_PER_1M_OUTPUT = 0.60
 
 
-def cost_usd(usage) -> float:
+def cost_usd(usage: CompletionUsage) -> float:
     """Estimate the dollar cost of one call from its token usage."""
     prompt = (usage.prompt_tokens or 0) / 1_000_000 * _PRICE_PER_1M_INPUT
     completion = (usage.completion_tokens or 0) / 1_000_000 * _PRICE_PER_1M_OUTPUT
     return round(prompt + completion, 6)
 
 
-def classify_ticket(text: str):
+def classify_ticket(text: str) -> tuple[GptClassification, CompletionUsage]:
     """Ask GPT to classify one ticket.
     Returns (classification, usage) so the caller can report tokens/cost.
     """

@@ -6,7 +6,7 @@ import time
 
 from fastapi import APIRouter
 
-from app.schemas.ticket import TicketRequest, RouteResult
+from app.schemas.ticket import RouteResult, TicketRequest
 from app.services.router_service import route_ticket
 
 # prefix => every route here lives under /api. tags => grouping in /docs.

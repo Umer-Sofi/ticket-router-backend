@@ -8,6 +8,11 @@ If every attempt fails, we return a safe fallback instead of raising.
 import logging
 
 from app.core.config import settings
+from app.core.constants import (
+    CATEGORY_TO_TEAM,
+    FALLBACK_CATEGORY,
+    FALLBACK_PRIORITY,
+)
 from app.schemas.ticket import RouteResult
 from app.services.business_rules import apply_business_rules
 from app.services.openai_client import classify_ticket, cost_usd
@@ -21,12 +26,12 @@ def _fallback(retries: int) -> RouteResult:
     """Safe result when OpenAI is unreachable after all retries.
     Priority = Medium (not Low, so urgent tickets aren't buried; not High, so a
     real outage doesn't flag everything as critical). Built fresh each call so
-    we never mutate a shared instance.
+    we never mutate a shared instance. All values come from constants.
     """
     return RouteResult(
-        category="General",
-        priority="Medium",
-        assigned_team="Customer Support",
+        category=FALLBACK_CATEGORY,
+        priority=FALLBACK_PRIORITY,
+        assigned_team=CATEGORY_TO_TEAM[FALLBACK_CATEGORY],
         reasoning="Automatic classification unavailable — routed for manual review.",
         retries=retries,
     )
@@ -36,8 +41,8 @@ def route_ticket(text: str) -> RouteResult:
     """Classify a ticket, retrying transient failures, never crashing."""
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            gpt, usage = classify_ticket(text)      # may raise (network / API)
-            result = apply_business_rules(gpt)       # success: policy applied
+            gpt, usage = classify_ticket(text)  # may raise (network / API)
+            result = apply_business_rules(gpt)  # success: policy applied
 
             # Attach real metadata for the dashboard.
             result.model = settings.openai_model
@@ -45,7 +50,7 @@ def route_ticket(text: str) -> RouteResult:
             result.completion_tokens = usage.completion_tokens
             result.total_tokens = usage.total_tokens
             result.cost_usd = cost_usd(usage)
-            result.retries = attempt - 1             # 0 if it worked first try
+            result.retries = attempt - 1  # 0 if it worked first try
             return result
         except Exception as exc:
             logger.warning("classify attempt %d/%d failed: %s", attempt, MAX_ATTEMPTS, exc)
