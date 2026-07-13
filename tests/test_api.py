@@ -7,10 +7,11 @@ they're deterministic and cost nothing.
 
 from types import SimpleNamespace
 
+from fastapi.testclient import TestClient
+
 import app.services.router_service as router_service
 from app.main import app
 from app.schemas.ticket import GptClassification
-from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -54,10 +55,10 @@ def test_route_ticket_applies_business_rules(monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["category"] == "Billing"
-    assert body["priority"] == "High"            # overridden by business rule
-    assert body["assigned_team"] == "Billing"    # derived from category
+    assert body["priority"] == "High"  # overridden by business rule
+    assert body["assigned_team"] == "Billing"  # derived from category
     assert body["processing_time_ms"] is not None
-    assert body["total_tokens"] == 80            # metadata attached
+    assert body["total_tokens"] == 80  # metadata attached
     assert body["retries"] == 0
 
 
@@ -69,5 +70,5 @@ def test_fallback_when_openai_fails(monkeypatch):
     monkeypatch.setattr(router_service, "classify_ticket", boom)
 
     resp = client.post("/api/route-ticket", json={"text": "help me"})
-    assert resp.status_code == 200                       # did NOT crash
+    assert resp.status_code == 200  # did NOT crash
     assert resp.json()["assigned_team"] == "Customer Support"  # fallback result
