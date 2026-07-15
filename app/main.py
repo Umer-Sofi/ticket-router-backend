@@ -1,0 +1,33 @@
+"""FastAPI entrypoint. Uvicorn runs THIS module (`app.main:app`)."""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routers import tickets
+
+app = FastAPI(
+    title="Smart Ticket Router",
+    description="AI-powered support-ticket classification and routing.",
+    version="1.0.0",
+)
+
+# CORS = which browser origins may call this API. The Next.js dev server runs
+# on http://localhost:3000, and browsers block cross-origin calls unless the
+# server explicitly allows them. Without this, the frontend fetch is blocked.
+# (Tighten this list to the deployed frontend origin before production.)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health")
+def health():
+    """Liveness check: proves the server process is up. Touches nothing else."""
+    return {"status": "ok"}
+
+
+# Register the ticket-routing endpoints (POST /api/route-ticket).
+app.include_router(tickets.router)

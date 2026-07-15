@@ -1,0 +1,14 @@
+# Direct dependencies only. Transitive deps (starlette, anyio, httpcore,
+# jiter, tqdm, ...) are installed automatically by pip.
+
+# --- Runtime ---
+fastapi==0.128.8          # web framework
+uvicorn==0.39.0           # ASGI server that runs the app
+pydantic==2.13.4          # request/response models + validation
+pydantic-settings==2.11.0 # loads settings from the environment / .env
+python-dotenv==1.2.1      # required by pydantic-settings to read .env
+openai==2.45.0            # GPT client for classification
+
+# --- Tests ---
+pytest==8.4.2             # test runner
+httpx==0.28.1             # required by FastAPI's TestClient
