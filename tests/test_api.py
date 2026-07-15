@@ -5,18 +5,13 @@ so they're free. The happy-path and fallback tests MOCK the OpenAI call so
 they're deterministic and cost nothing.
 """
 
-from types import SimpleNamespace
-
 from fastapi.testclient import TestClient
 
 import app.services.router_service as router_service
 from app.main import app
-from app.schemas.ticket import GptClassification
+from app.schemas.ticket import GptTicket
 
 client = TestClient(app)
-
-# Fake token-usage object, mimics what the OpenAI SDK returns.
-_FAKE_USAGE = SimpleNamespace(prompt_tokens=50, completion_tokens=30, total_tokens=80)
 
 
 def test_health():
@@ -46,20 +41,50 @@ def test_oversized_text_rejected():
 def test_route_ticket_applies_business_rules(monkeypatch):
     # Pretend GPT said Billing/Low. Business rule must force priority to High.
     def fake_classify(text):
-        gpt = GptClassification(category="Billing", priority="Low", reasoning="mock")
-        return gpt, _FAKE_USAGE
+        return [
+            GptTicket(text="charged twice", category="Billing", priority="Low", reasoning="mock")
+        ]
 
-    monkeypatch.setattr(router_service, "classify_ticket", fake_classify)
+    monkeypatch.setattr(router_service, "classify_tickets", fake_classify)
 
     resp = client.post("/api/route-ticket", json={"text": "charged twice"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["category"] == "Billing"
-    assert body["priority"] == "High"  # overridden by business rule
-    assert body["assigned_team"] == "Billing"  # derived from category
-    assert body["processing_time_ms"] is not None
-    assert body["total_tokens"] == 80  # metadata attached
-    assert body["retries"] == 0
+    # Response is a bare list of tickets — no wrapper, no metadata.
+    assert isinstance(body, list)
+    assert len(body) == 1
+    first = body[0]
+    assert first["category"] == "Billing"
+    assert first["priority"] == "High"  # overridden by business rule
+    assert first["assigned_team"] == "Billing"  # derived from category
+    assert set(first.keys()) == {"text", "category", "priority", "assigned_team", "reasoning"}
+
+
+# --- Multi-ticket: one message with two distinct tickets ------------------
+def test_multiple_tickets_each_classified(monkeypatch):
+    # A message that raises a billing problem AND a login problem.
+    def fake_classify(text):
+        return [
+            GptTicket(
+                text="charged twice", category="Billing", priority="Low", reasoning="billing"
+            ),
+            GptTicket(
+                text="can't log in", category="Account", priority="Medium", reasoning="login"
+            ),
+        ]
+
+    monkeypatch.setattr(router_service, "classify_tickets", fake_classify)
+
+    resp = client.post("/api/route-ticket", json={"text": "charged twice; also can't log in"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 2
+    assert [t["category"] for t in body] == ["Billing", "Account"]
+    # Business rules run per ticket: both categories force High priority.
+    assert [t["priority"] for t in body] == ["High", "High"]
+    assert [t["assigned_team"] for t in body] == ["Billing", "Account Management"]
+    # Each ticket carries the text slice it came from.
+    assert body[0]["text"] == "charged twice"
 
 
 # --- Failure path: mock OpenAI to always fail -> fallback, never crash ----
@@ -67,8 +92,10 @@ def test_fallback_when_openai_fails(monkeypatch):
     def boom(text):
         raise RuntimeError("OpenAI down")
 
-    monkeypatch.setattr(router_service, "classify_ticket", boom)
+    monkeypatch.setattr(router_service, "classify_tickets", boom)
 
     resp = client.post("/api/route-ticket", json={"text": "help me"})
     assert resp.status_code == 200  # did NOT crash
-    assert resp.json()["assigned_team"] == "Customer Support"  # fallback result
+    body = resp.json()
+    assert len(body) == 1
+    assert body[0]["assigned_team"] == "Customer Support"  # fallback result

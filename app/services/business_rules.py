@@ -17,7 +17,10 @@ def apply_business_rules(gpt: GptClassification) -> RouteResult:
     # .get(key, fallback) does exactly this: fallback = GPT's own priority.
     final_priority = PRIORITY_OVERRIDES.get(gpt.category, gpt.priority)
 
+    # `text` only exists on a GptTicket (multi-ticket input); tolerate a plain
+    # GptClassification (used by unit tests) by defaulting to None.
     return RouteResult(
+        text=getattr(gpt, "text", None),
         category=gpt.category,
         priority=final_priority,
         assigned_team=assigned_team,

@@ -6,7 +6,7 @@ Run it by hand to sanity-check classification quality:
     python -m scripts.eval_tickets
 """
 
-from app.services.router_service import route_ticket
+from app.services.router_service import route_message
 
 # (ticket text, expected category) — expectations are the human's judgment.
 SAMPLES = [
@@ -38,7 +38,8 @@ def main():
     print(f"{'#':>2}  {'EXPECTED':16} {'GOT':16} {'PRIORITY':8} {'TEAM':18} OK")
     print("-" * 78)
     for i, (text, expected) in enumerate(SAMPLES, 1):
-        r = route_ticket(text)
+        # Each sample is a single-issue ticket, so we compare the first result.
+        r = route_message(text).tickets[0]
         ok = r.category == expected
         passed += ok
         print(

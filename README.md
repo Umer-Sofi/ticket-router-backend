@@ -1,7 +1,8 @@
 # Smart Ticket Router — Backend
 
-AI-powered support-ticket triage. A **FastAPI** service that classifies a support
-ticket into a **category**, **priority**, and **assigned team**, using **GPT-4o-mini**
+AI-powered support-ticket triage. A **FastAPI** service that reads a support
+message, splits it into one or more **distinct tickets**, and classifies each
+into a **category**, **priority**, and **assigned team** — using **GPT-4o-mini**
 for understanding and **deterministic business rules** for policy.
 
 > Frontend (Next.js) lives in a separate repo: **ticket-router-frontend**.
@@ -10,20 +11,32 @@ for understanding and **deterministic business rules** for policy.
 
 ## What it does
 
-A support operator submits raw ticket text. The service returns structured JSON:
+A support operator submits raw ticket text. One message may contain several
+distinct tickets, so the service returns a **JSON array** of classified tickets
+— one entry per distinct issue found:
 
 ```json
-{
-  "category": "Billing",
-  "priority": "High",
-  "assigned_team": "Billing",
-  "reasoning": "The user was charged twice, indicating a payment failure.",
-  "processing_time_ms": 1941.3
-}
+[
+  {
+    "text": "I was charged twice this month.",
+    "category": "Billing",
+    "priority": "High",
+    "assigned_team": "Billing",
+    "reasoning": "The user was charged twice, indicating a payment failure."
+  },
+  {
+    "text": "I also can't log in.",
+    "category": "Account",
+    "priority": "High",
+    "assigned_team": "Account Management",
+    "reasoning": "The user cannot access their account."
+  }
+]
 ```
 
-The AI *suggests* a classification; the app's own rules *decide* the final priority
-and team — so a payment failure is always **High**, no matter what the model says.
+The AI *splits* the message and *suggests* a classification for each ticket;
+the app's own rules *decide* the final priority and team — so a payment failure
+is always **High**, no matter what the model says.
 
 ---
 
@@ -101,7 +114,10 @@ Classify a ticket.
 { "text": "I was charged twice for my subscription" }
 ```
 
-**Response:** `RouteResult` (see example at top).
+**Response:** a JSON **array** of ticket objects — each
+`{ text, category, priority, assigned_team, reasoning }` (see example at top).
+A single-issue message returns one ticket; a message with several distinct
+issues returns one entry per ticket.
 
 **Validation:** empty, whitespace-only, or text over 5000 chars → `422`.
 

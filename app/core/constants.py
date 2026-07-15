@@ -31,9 +31,8 @@ CATEGORY_TO_TEAM: dict[Category, Team] = {
     "General": "Customer Support",
 }
 
-# Derived lists so other layers can reuse the values without re-typing them.
+# Derived list so other layers can reuse the values without re-typing them.
 CATEGORIES: list[Category] = list(CATEGORY_TO_TEAM.keys())
-TEAMS: list[Team] = list(CATEGORY_TO_TEAM.values())
 
 # Deterministic priority policy (the business rules). These OVERRIDE whatever
 # priority GPT suggested. "Technical" is intentionally omitted: it has no hard

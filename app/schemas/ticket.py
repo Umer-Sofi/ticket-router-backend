@@ -1,7 +1,8 @@
 """Pydantic models = the data contract for this service.
 
-- TicketRequest: the shape of what comes IN (the request body).
-- RouteResult:   the shape of what goes OUT (the response).
+- TicketRequest:  the shape of what comes IN (the request body).
+- RouteResult:    one classified ticket; the endpoint returns a LIST of these
+                  (one per distinct ticket found in the message).
 
 Pydantic validates data against these models automatically. If incoming
 data doesn't match, FastAPI rejects it with a 422 before our code runs.
@@ -34,9 +35,8 @@ class TicketRequest(BaseModel):
 
 
 class GptClassification(BaseModel):
-    """What GPT is allowed to return: the 3 fields that need judgment.
+    """The 3 fields that need GPT's judgment, for ONE ticket.
     `assigned_team` is NOT here — it's derived from category in our code.
-    This is also the strict schema the OpenAI API is forced to match.
     """
 
     category: Category
@@ -44,21 +44,32 @@ class GptClassification(BaseModel):
     reasoning: str
 
 
-class RouteResult(BaseModel):
-    """What we send back after classifying + applying business rules.
-    Built from GptClassification + the derived team + final priority.
+class GptTicket(GptClassification):
+    """One ticket the model extracted from the message: a classification
+    plus the slice of text it applies to. `text` lets the UI show WHICH
+    part of the message produced each result.
     """
 
+    text: str
+
+
+class GptClassificationList(BaseModel):
+    """The strict schema the OpenAI API is forced to match: a list of tickets.
+    (Structured outputs need an object at the top level, so the list is wrapped
+    in this `tickets` field rather than returned bare.)
+    """
+
+    tickets: list[GptTicket]
+
+
+class RouteResult(BaseModel):
+    """One classified ticket we send back, after applying business rules.
+    Built from a GptTicket + the derived team + the final (possibly forced)
+    priority. The endpoint returns a list of these — one per ticket found.
+    """
+
+    text: Optional[str] = None  # the ticket text this result was derived from
     category: Category
     priority: Priority
     assigned_team: Team
     reasoning: str
-    # --- Metadata (not part of the routing decision) ---
-    # All optional so the business-rules layer / fallback don't need to set them.
-    processing_time_ms: Optional[float] = None
-    model: Optional[str] = None
-    prompt_tokens: Optional[int] = None
-    completion_tokens: Optional[int] = None
-    total_tokens: Optional[int] = None
-    cost_usd: Optional[float] = None
-    retries: Optional[int] = None
